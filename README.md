@@ -28,6 +28,10 @@
 - **跨实例互斥**：同一时刻同一条隧道只能被一个实例占用，避免 TUN 网卡被互删
 
 ---
+<img width="1672" height="1097" alt="1" src="https://github.com/user-attachments/assets/c9d514f8-8c2a-4d4a-b576-bf1417d859bf" />
+<img width="1672" height="1097" alt="2" src="https://github.com/user-attachments/assets/8fd7f5e6-b775-4124-b549-ff0a23f148a6" />
+<img width="1672" height="1097" alt="3" src="https://github.com/user-attachments/assets/0b7469a5-543f-45ce-925e-56935584b4ed" />
+<img width="1672" height="1097" alt="4" src="https://github.com/user-attachments/assets/c8a0486b-f0a8-4821-891a-930cfc5c754d" />
 
 ## 快速开始
 
