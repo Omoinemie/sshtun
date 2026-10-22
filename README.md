@@ -98,6 +98,42 @@ sshtun stop             # 停止
 
 ---
 
+## SSH 服务器要求
+
+sshtun 在 SSH 连接上**只开转发通道，不执行任何远端命令**，所以对端 sshd 的要求很少。
+
+### 必须满足
+
+| 项 | 说明 |
+| --- | --- |
+| `AllowTcpForwarding yes` | 本地转发、SOCKS5、远程转发全靠它。OpenSSH 默认是 yes，但不少云镜像的加固脚本会改成 no |
+| `DisableForwarding no` | 打开它会连同上表一并禁掉 |
+| 认证方式 | 密码或公钥都支持，服务端开启对应方式即可 |
+| 不需要 shell | 账号可以是 `nologin` 或已锁定的账号，纯转发完全够用 |
+
+一条命令看当前**实际生效**的值：
+
+```bash
+sudo sshd -T | grep -Ei 'allowtcpforwarding|disableforwarding|permitopen|permitlisten|gatewayports'
+```
+
+期望看到 `allowtcpforwarding yes`。
+
+> 多数发行版把配置拆进 `/etc/ssh/sshd_config.d/*.conf`，**片段优先于主配置**，且同一关键字以**第一个出现的生效值为准**。
+> `sshd -T` 直接给出最终生效值，比翻文件可靠。
+
+### 按需设置
+
+| 项 | 什么时候需要 |
+| --- | --- |
+| `GatewayPorts` | 只做远程转发（`-R`）且要监听 `0.0.0.0` 时。默认 `no`，即使指定 `0.0.0.0` 也会被降到回环地址 |
+| `PermitOpen` | 想限制「允许连哪些目标」时。本地转发与 SOCKS5 走 `direct-tcpip`，设了就得放行对应目标 |
+| `PermitListen` | 想限制「允许在远端监听哪些地址/端口」时 |
+
+排查「连得上但转发不通」：把 sshd 日志级别调到 `DEBUG`，重载 sshd 后日志里会写明被哪条规则拒绝。
+
+---
+
 ## 命令行
 
 ```
@@ -290,6 +326,72 @@ make dist SECRET=$(head -c 32 /dev/urandom | base64)
 ├── assets/              logo.ico / logo.png / logo.svg / icon-*.png
 └── config/              默认配置与数据库
 ```
+
+---
+
+## 常见问题
+
+### 连不上 / 转发不通
+
+**报错 "administratively prohibited"，远端拒绝建立转发通道**
+服务端没开转发。按上一节确认 `AllowTcpForwarding yes`，改完 `systemctl reload sshd`。
+
+**隧道连上了，但一点流量都没有**
+先确认配了路由：`sshtun db route list <隧道名>`。只有落在路由网段里的流量才进隧道；标了 `--bypass` 的网段是强制直连。再用 `sshtun check <隧道名> --connect` 单独测一次通道。
+
+**本地转发报 "administratively prohibited"**
+服务端 `PermitOpen` 没放行这个目标。本地转发与 SOCKS5 走的都是 `direct-tcpip`，受这条限制。
+
+**本地转发报 "connect failed"**
+策略是放行的，是**服务端到目标的路由或防火墙**不通。报错文案会区分这两种：策略拒绝是 "administratively prohibited"，目标不可达是 "connect failed"。
+
+**远程转发在远端只能绑 127.0.0.1**
+服务端 `GatewayPorts` 是 `no`。要对外暴露改成 `yes`（或 `clientspecified`），并用 `--bind-addr 0.0.0.0` 指定。
+
+### 权限与环境
+
+**`sshtun check` 报 "missing privileges"**
+TUN 模式要建虚拟网卡、改路由表，需要 root（Linux）或管理员（Windows）。端口转发和 SOCKS5 不需要。
+
+**Linux 报 `/dev/net/tun` 不存在**
+内核没加载 tun 模块：`sudo modprobe tun`，并写进 `/etc/modules-load.d/` 保证开机自动加载。
+
+**Windows 提示找不到 tun2socks 或 wintun.dll**
+在程序目录运行发行包自带的 `dl-tun2socks.bat`，会一并下载 tun2socks 与 wintun.dll。
+
+**WebView2 运行时缺失（Windows 图形程序打不开）**
+安装 Microsoft Edge WebView2 Runtime。Windows 10/11 通常已内置。
+
+### 密码与主机密钥
+
+**换了服务器地址后要重新输密码**
+有意为之：连接地址（主机/端口）一变，库里存着的密码会被清空，避免旧密码被发到新地址。重新输一次即可。
+
+**提示密文无法解密**
+密码密文与**本机机器码**绑定，换机器或改主机名后解不开，重新输入一次就会用新机器码重新加密。
+
+**密码是明文存的？**
+不会。写入时统一用 AES-256-GCM 加密后入库；但**默认种子是公开常量**，生产部署请按「密码加密种子」注入各自的随机种子。
+
+**主机密钥变了，直接拒绝连接**
+这是防中间人的默认行为。确认新指纹无误后，删掉信任存储（known_hosts）里的旧记录再连；也可以用 `ssh-keyscan` 先取回新密钥。
+
+### 运行与排查
+
+**SOCKS5 代理端口是多少**
+每条隧道一个独立代理，只监听 `127.0.0.1`，端口由内核分配。`sshtun status` 会打印 `SOCKS5: <地址>`。
+
+**日志在哪**
+配置里的 `[log] dir`，默认是工作目录下的 `log/`。Web 界面顶栏「运行日志」也能直接看，支持按隧道筛选。
+
+**同一个机器起了两个 sshtun，第二条隧道起不来**
+同一时刻同一条隧道只能被一个实例占用（跨进程锁），避免 TUN 网卡被互删。先停掉另一个实例。
+
+**忘记 Web 界面密码**
+改配置文件 `[web] password`，或用命令行 `sshtun web --password 'xxx'` 临时覆盖。
+
+**Web 界面绑定 0.0.0.0 后起不来**
+绑定非回环地址时未设密码会被拒绝启动（防止裸奔）。补一个密码即可。
 
 ---
 
