@@ -22,14 +22,14 @@ func TestPlatformHardwareIDFromDMI(t *testing.T) {
 	}
 
 	write("product_uuid", " 7012d3a4-1b2c-4d5e-8f90-a1b2c3d4e5f6 \n")
-	if v, src := platformHardwareID(); v != "7012d3a4-1b2c-4d5e-8f90-a1b2c3d4e5f6" || src != "SMBIOS 系统/主板 UUID" {
+	if v, src := platformHardwareID(); v != "7012d3a4-1b2c-4d5e-8f90-a1b2c3d4e5f6" || src != "SMBIOS system/board UUID" {
 		t.Fatalf("应取系统 UUID: got %q (%s)", v, src)
 	}
 
 	// 固件占位 UUID 应被跳过，改用主板序列号
 	write("product_uuid", "00000000-0000-0000-0000-000000000000")
 	write("board_serial", "MB-1234567890")
-	if v, src := platformHardwareID(); v != "MB-1234567890" || src != "主板序列号" {
+	if v, src := platformHardwareID(); v != "MB-1234567890" || src != "board serial number" {
 		t.Fatalf("应退回主板序列号: got %q (%s)", v, src)
 	}
 
