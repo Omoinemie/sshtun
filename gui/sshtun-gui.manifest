@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  sshtun-gui 的应用程序清单。
+  requestedExecutionLevel=requireAdministrator：Windows 在启动时即请求 UAC 提权，
+  同时资源管理器会在 exe 图标上叠加「盾牌」标记（盾牌仅由本清单驱动，
+  运行时的 ShellExecute "runas" 自重启不会产生盾牌）。
+  仅用于 sshtun-gui；命令行 sshtun.exe 不嵌入本清单，保持 asInvoker 可非管理员运行。
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="sshtun.gui" type="win32"/>
+  <description>sshtun GUI</description>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
