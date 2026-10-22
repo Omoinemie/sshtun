@@ -1,0 +1,644 @@
+/* ============================================================================
+   sshtun Web 界面样式
+   设计：深色「指挥台」为基准，另提供亮色主题（data-theme="light"）。
+        主题由 app.js 决定并写入 <html data-theme>：auto 时跟随系统/浏览器，
+        也可手动固定亮色或深色。CSS 只认 data-theme，不依赖媒体查询。
+   ============================================================================ */
+
+/* ------------------------------- 主题变量 ------------------------------- */
+:root{
+  --bg:#0b0e12;
+  --bg-soft:rgba(11,14,18,.88);
+  --panel:#101419;
+  --panel-2:#141a21;
+  --panel-3:#1a212a;
+  --line:#1e252d;
+  --line-2:#2a333d;
+  --fg:#e9edf2;
+  --fg-dim:#a3aeba;
+  --fg-mute:#8b95a3;
+  --accent:#2dd4bf;
+  --accent-fg:#04211d;
+  --accent-soft:rgba(45,212,191,.12);
+  --down:#7cc7f5;
+  --down-soft:rgba(124,199,245,.20);
+  --up:#f0b445;
+  --up-soft:rgba(240,180,69,.18);
+  --danger:#ef6b6b;
+  --danger-soft:rgba(239,107,107,.12);
+  --dot-off:#404a55;
+  --input-bg:rgba(0,0,0,.28);
+  --code-bg:#080b0e;
+  --mask:rgba(4,7,10,.72);
+  --shadow:0 18px 48px rgba(0,0,0,.5);
+  --logo-shadow:0 8px 22px rgba(45,212,191,.22);
+  --radius:10px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  /* --ctl-h 是同一行内控件（按钮/下拉/输入框）统一的高度，窄屏下整体放大。 */
+  --ctl-h:32px;
+}
+
+:root[data-theme="light"]{
+  --bg:#f4f6f8;
+  --bg-soft:rgba(244,246,248,.92);
+  --panel:#ffffff;
+  --panel-2:#f0f3f6;
+  --panel-3:#e7ecf2;
+  --line:#e3e8ee;
+  --line-2:#ccd4de;
+  --fg:#151a21;
+  --fg-dim:#4a5563;
+  --fg-mute:#6b7684;
+  --accent:#0f9b8a;
+  --accent-fg:#ffffff;
+  --accent-soft:rgba(15,155,138,.10);
+  --down:#0b7fa8;
+  --down-soft:rgba(11,127,168,.14);
+  --up:#b26a00;
+  --up-soft:rgba(178,106,0,.14);
+  --danger:#c0392b;
+  --danger-soft:rgba(192,57,43,.10);
+  --dot-off:#c2cad4;
+  --input-bg:#fbfcfd;
+  --code-bg:#f7f9fb;
+  --mask:rgba(16,22,30,.42);
+  --shadow:0 16px 40px rgba(16,24,32,.12);
+  --logo-shadow:0 6px 18px rgba(15,26,40,.18);
+}
+
+/* --------------------------------- 基础 --------------------------------- */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-size:13px;line-height:1.5;
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font-family:inherit}
+.hidden{display:none !important}
+.spacer{flex:1}
+
+/* --------------------------------- 骨架 --------------------------------- */
+.app{min-height:100vh}
+
+/* --------------------------------- 主区 --------------------------------- */
+.main{min-width:0;min-height:100vh;display:flex;flex-direction:column}
+.bar{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:11px 22px;border-bottom:1px solid var(--line);background:var(--bg-soft);
+  backdrop-filter:blur(10px);position:sticky;top:0;z-index:30;
+}
+.bar-l{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-logo{width:28px;height:28px;border-radius:8px;box-shadow:var(--logo-shadow);flex:0 0 auto}
+.brand-text b{display:block;font-size:14px;letter-spacing:.3px;line-height:1.2}
+.brand-text span{display:block;color:var(--fg-mute);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;line-height:1.2}
+.bar-r{display:flex;align-items:center;gap:8px}
+.view{padding:18px 22px 40px;display:flex;flex-direction:column;gap:16px}
+
+/* --------------------------------- 页脚 --------------------------------- */
+/* 版本、权限与运行状态统一放在页脚，顶部栏只保留主要操作 */
+.foot{
+  display:flex;align-items:center;gap:8px;padding:10px 22px;margin-top:auto;
+  border-top:1px solid var(--line);background:var(--bg-soft);backdrop-filter:blur(10px);
+  color:var(--fg-mute);font-size:11.5px;
+}
+.foot-l{display:flex;align-items:center;gap:8px}
+.foot .pill{font-size:11px}
+/* 页脚里的项目仓库链接：默认低调，悬停时与其它可点元素一致 */
+.foot-link{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg-dim);
+  font-size:11px;white-space:nowrap;text-decoration:none;
+  transition:color .15s,border-color .15s,background .15s;
+}
+.foot-link:hover{color:var(--fg);border-color:var(--fg-mute);background:var(--panel-3)}
+.foot-link svg{flex:none;opacity:.85}
+.foot-link:hover svg{opacity:1}
+
+/* --------------------------------- 按钮 --------------------------------- */
+.btn{
+  appearance:none;border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg);
+  padding:7px 13px;border-radius:8px;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset;
+  transition:background .15s,border-color .15s,opacity .15s,color .15s;
+}
+.btn:hover{background:var(--panel-3);border-color:var(--line-2)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.btn-primary:hover{filter:brightness(1.06);background:var(--accent);border-color:var(--accent)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--fg-dim)}
+.btn-ghost:hover{background:var(--panel-2);color:var(--fg)}
+.btn-danger-ghost{background:transparent;border-color:rgba(192,57,43,.4);color:var(--danger)}
+.btn-danger-ghost:hover{background:var(--danger-soft)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:7px}
+/* 开关型按钮：处于「开」时高亮（如日志自动刷新） */
+.btn.is-on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn-block{width:100%;justify-content:center}
+.icon-btn{
+  appearance:none;border:1px solid transparent;background:transparent;color:var(--fg-mute);
+  width:28px;height:28px;border-radius:7px;cursor:pointer;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;transition:background .14s,color .14s,border-color .14s;
+}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn:hover{background:var(--panel-2);color:var(--fg);border-color:var(--line-2)}
+/* 顶部栏的图标按钮：与文字按钮同规格（带边框与底色），只是保持方形 */
+.icon-btn.solid{width:32px;height:32px;border-color:var(--line-2);background:var(--panel-2);color:var(--fg-dim);border-radius:8px}
+.icon-btn.solid svg{width:16px;height:16px}
+.icon-btn.solid:hover{background:var(--panel-3);color:var(--fg)}
+
+/* 主题按钮：图标随当前主题变化（自动/亮色/深色各一枚） */
+#btn-theme .ic-auto,#btn-theme .ic-light,#btn-theme .ic-dark{display:none}
+#btn-theme[data-mode="auto"] .ic-auto{display:block}
+#btn-theme[data-mode="light"] .ic-light{display:block}
+#btn-theme[data-mode="dark"] .ic-dark{display:block}
+
+/* ------------------------------- 状态胶囊 ------------------------------- */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg-dim);
+  font-size:11.5px;white-space:nowrap;
+}
+.pill-ok{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft)}
+.pill-warn{color:var(--up);border-color:var(--up-soft);background:var(--up-soft)}
+.pill-muted{color:var(--fg-mute)}
+
+/* -------------------------------- 提示条 -------------------------------- */
+.notice{
+  display:flex;align-items:center;gap:12px;padding:11px 15px;border-radius:var(--radius);
+  border:1px solid var(--up-soft);background:var(--up-soft);
+}
+.notice svg{width:16px;height:16px;color:var(--up);flex:0 0 auto}
+.notice-text{font-size:12.5px;color:var(--fg-dim)}
+.notice-text b{color:var(--up);font-weight:600}
+
+/* -------------------------------- 概览面板 ------------------------------- */
+/* 三列：隧道概览 | 下载 | 上传（全局流量标题横跨后两列）；窄屏再折叠成单列 */
+.overview{
+  display:grid;grid-template-columns:minmax(190px,26%) minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:auto 1fr;
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);overflow:hidden;
+}
+.ov-side{padding:12px 16px;min-width:0}
+/* 左栏：隧道概览，跨两行，右边缘作为与右侧的分隔线 */
+.ov-side:first-child{grid-column:1;grid-row:1/3;border-right:1px solid var(--line)}
+/* 右栏拆成网格项，让「下载 / 上传」各占一列 */
+.ov-side:nth-child(2){display:contents}
+.ov-side:nth-child(2)>.ov-title{grid-column:2/4;grid-row:1;padding:12px 16px 0}
+.ov-title{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.ov-title b{font-size:13px;font-weight:600}
+.ov-title .hint{color:var(--fg-mute);font-size:11.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-title .live{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--accent);font-size:11.5px;flex:0 0 auto}
+
+/* 概览读数：紧凑 2×2，无边框 */
+.readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+.readout .cell{padding:0;border-right:0}
+.readout .k{color:var(--fg-mute);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase}
+.readout .v{font:600 19px/1.3 var(--mono);margin-top:2px;letter-spacing:-.2px;overflow-wrap:anywhere}
+
+/* -------------------------------- 全局流量 ------------------------------- */
+.traffic-body{display:contents}
+.traffic-body .chart{padding:0 16px 10px;min-width:0;text-align:left}
+.traffic-body .chart:first-child{grid-column:2;grid-row:2}
+.traffic-body .chart:last-child{grid-column:3;grid-row:2}
+.traffic-body .chart+.chart{border-left:1px solid var(--line)}
+.chart-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;text-align:left}
+.chart-top>div:first-child{min-width:0;text-align:left}
+.chart-top .label{color:var(--fg-dim);font-size:12px;display:flex;align-items:center;gap:6px;justify-content:flex-start}
+.chart-top .label i{width:8px;height:8px;border-radius:2px;display:inline-block;flex:0 0 auto}
+.chart-top .rate{font:600 22px/1.2 var(--mono);margin-top:4px;letter-spacing:-.4px}
+.chart-top .rate u{text-decoration:none;font-size:12px;color:var(--fg-mute);margin-left:3px}
+.chart-top .total{color:var(--fg-mute);font:11.5px var(--mono);white-space:nowrap;padding-top:2px}
+.spark{width:100%;height:50px;display:block;margin-top:6px}
+.spark .line{fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.spark .area{stroke:none}
+.spark.down .line{stroke:var(--down)}
+.spark.down .area{fill:var(--down-soft)}
+.spark.up .line{stroke:var(--up)}
+.spark.up .area{fill:var(--up-soft)}
+
+/* 迷你趋势图的悬停提示：跟随光标显示该采样点的速率 */
+.spark-wrap{position:relative;cursor:crosshair;margin-top:6px}
+.spark-wrap .spark{margin-top:0}
+.spark-cursor{position:absolute;top:0;bottom:0;width:1px;background:var(--line-2);pointer-events:none;z-index:1}
+.spark-tip{
+  position:absolute;transform:translateX(-50%);pointer-events:none;z-index:2;
+  padding:3px 8px;border-radius:6px;border:1px solid var(--line-2);background:var(--panel);
+  color:var(--fg);font:11px var(--mono);white-space:nowrap;box-shadow:var(--shadow);
+}
+
+/* ------------------------------ 隧道表 / 面板 ----------------------------- */
+.split{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head b{font-size:13px;font-weight:600}
+.panel-head .hint{color:var(--fg-mute);font-size:11.5px}
+.filters{display:flex;gap:3px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:2px}
+.filters button{
+  appearance:none;border:0;background:transparent;color:var(--fg-mute);
+  padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;transition:background .14s,color .14s;
+}
+.filters button:hover{color:var(--fg)}
+.filters button.is-on{background:var(--panel);color:var(--fg)}
+
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;min-width:760px;border-collapse:collapse}
+.tbl thead th{
+  text-align:left;color:var(--fg-mute);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;
+  font-weight:500;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--panel-2);white-space:nowrap;
+}
+.tbl thead th.num{text-align:right}
+.tbl thead th.c{text-align:center}
+.tbl tbody tr{border-bottom:1px solid var(--line);cursor:pointer;transition:background .13s}
+.tbl tbody tr:last-child{border-bottom:0}
+.tbl tbody tr:hover{background:var(--panel-2)}
+.tbl tbody tr.is-sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
+.tbl tbody tr.is-off .tname b,.tbl tbody tr.is-off .tun{color:var(--fg-mute)}
+.tbl tbody td{padding:10px 14px;vertical-align:middle}
+.tbl tbody td.num{text-align:right}
+.tbl tbody td.c{text-align:center}
+.tbl .tblank{color:var(--fg-mute);text-align:center;padding:26px 14px;font-size:12.5px}
+
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dot-off);flex:0 0 auto}
+.dot.on{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tname{display:flex;align-items:center;gap:9px;min-width:0}
+.tname b{font-size:13px;font-weight:600;letter-spacing:.1px}
+.tname .off-tag{font-size:10.5px;color:var(--fg-mute);border:1px solid var(--line-2);border-radius:4px;padding:0 4px}
+.tun{font:11.5px var(--mono);color:var(--fg-dim)}
+.tun em{font-style:normal;color:var(--fg-mute);display:block;font-size:10.5px;margin-top:2px;overflow-wrap:anywhere}
+.endpoint{font:11.5px var(--mono);color:var(--fg-dim);overflow-wrap:anywhere}
+/* 对端实际连接 IP（v4/v6） */
+.peer{display:flex;align-items:center;gap:6px;margin-top:3px;font:11px var(--mono);color:var(--fg-mute);overflow-wrap:anywhere}
+.peer .fam{
+  font:9.5px/1 var(--mono);letter-spacing:.3px;padding:2px 5px;border-radius:4px;flex:0 0 auto;
+  border:1px solid var(--line-2);color:var(--fg-mute);background:var(--panel-2);
+}
+.rate{font-family:var(--mono);font-size:12.5px;display:inline-block}
+.rate.down{color:var(--down)}
+.rate.up{color:var(--up)}
+.rate.zero{color:var(--fg-mute)}
+.rate .acc{display:block;color:var(--fg-mute);font-size:10.5px;margin-top:1px}
+
+/* -------------------------------- 语义配色 -------------------------------- */
+/* 不同操作给不同底色，避免一排按钮看起来都一样 */
+.btn-primary,.btn-mini.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.btn-primary:hover,.btn-mini.primary:hover{filter:brightness(1.06);background:var(--accent);border-color:var(--accent)}
+.btn-warn,.btn-mini.warn{background:var(--up-soft);border-color:rgba(240,180,69,.4);color:var(--up)}
+.btn-warn:hover,.btn-mini.warn:hover{background:rgba(240,180,69,.26)}
+.btn-info,.btn-mini.info{background:var(--down-soft);border-color:rgba(124,199,245,.34);color:var(--down)}
+.btn-info:hover,.btn-mini.info:hover{background:rgba(124,199,245,.26)}
+.btn-danger,.btn-mini.danger{background:var(--danger-soft);border-color:rgba(192,57,43,.42);color:var(--danger)}
+.btn-danger:hover,.btn-mini.danger:hover{background:rgba(239,107,107,.26)}
+
+/* 行内操作：统一文字按钮（小号，带边框与底色） */
+.rowacts{display:flex;gap:4px;justify-content:flex-end;align-items:center}
+.btn-mini{
+  appearance:none;border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg);
+  padding:3px 10px;border-radius:7px;font-size:12px;cursor:pointer;white-space:nowrap;
+  transition:background .14s,color .14s,border-color .14s;
+}
+.btn-mini:hover{background:var(--panel-3);color:var(--fg);border-color:var(--line-2)}
+.btn-mini.is-on{background:var(--accent-soft);border-color:transparent;color:var(--accent);font-weight:600}
+
+/* 开关 */
+.switch{position:relative;width:36px;height:20px;flex:0 0 auto;display:inline-block;vertical-align:middle}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch .slider{position:absolute;inset:0;background:var(--panel-3);border:1px solid var(--line-2);border-radius:999px;transition:.16s}
+.switch .slider::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#dbe1e9;transition:.16s}
+.switch input:checked + .slider{background:var(--accent);border-color:var(--accent)}
+.switch input:checked + .slider::after{transform:translateX(16px);background:var(--accent-fg)}
+:root[data-theme="light"] .switch .slider::after{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+:root[data-theme="light"] .switch input:checked + .slider::after{background:#fff}
+
+/* -------------------------------- 详情抽屉 ------------------------------- */
+/* 详情内容：启用开关、键值表、路由与端口转发分节 */
+/* 抽屉正文是 row 方向的 flex（为日志抽屉设计），详情块需显式撑满，否则内容按自身宽度收缩 */
+.det-body{display:flex;flex-direction:column;gap:13px;flex:1 1 auto;min-width:0;width:100%}
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+}
+.switch-row-label{font-size:12.5px;color:var(--fg-dim)}
+/* 流量统计：两格并排，撑满抽屉宽度 */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-cell{border:1px solid var(--line);border-radius:9px;background:var(--panel-2);padding:9px 11px;min-width:0;text-align:left}
+.stat-cell .k{color:var(--fg-mute);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;display:flex;align-items:center;gap:6px;justify-content:flex-start}
+.stat-cell .k i{width:7px;height:7px;border-radius:2px;display:inline-block;flex:0 0 auto}
+.stat-cell .v{font:600 15px/1.3 var(--mono);margin-top:4px;overflow-wrap:anywhere}
+.stat-cell .v.down{color:var(--down)}
+.stat-cell .v.up{color:var(--up)}
+.stat-cell .t{color:var(--fg-mute);font:11px var(--mono);margin-top:2px}
+.kv{display:grid;grid-template-columns:68px minmax(0,1fr);gap:8px 12px;margin:0;font-size:12px}
+.kv dt{color:var(--fg-mute)}
+.kv dd{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--fg-dim);word-break:break-all}
+.kv dd .fam-tag{
+  font:9.5px/1 var(--mono);letter-spacing:.3px;padding:2px 5px;border-radius:4px;margin-right:5px;
+  border:1px solid var(--line-2);color:var(--fg-mute);background:var(--panel-2);
+}
+.sec-title{display:flex;align-items:center;gap:8px;color:var(--fg-mute);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase}
+.sec-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{
+  font:11px var(--mono);padding:2px 8px;border-radius:6px;border:1px solid var(--line-2);
+  background:var(--panel-2);color:var(--fg-dim);word-break:break-all;
+}
+.chip.bypass{color:var(--up);border-color:var(--up-soft);background:var(--up-soft)}
+.chip.remote{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-soft)}
+.chip.mute{color:var(--fg-mute);border-style:dashed;background:transparent}
+
+/* -------------------------------- 空状态 -------------------------------- */
+.empty{text-align:center;padding:56px 20px;color:var(--fg-mute)}
+.empty img{width:72px;height:72px;opacity:.9;border-radius:18px}
+.empty h2{color:var(--fg);margin:14px 0 6px;font-size:16px}
+.empty p{margin:0 0 16px}
+
+/* --------------------------------- 弹窗 --------------------------------- */
+.modal{
+  position:fixed;inset:0;background:var(--mask);backdrop-filter:blur(5px);
+  display:flex;align-items:center;justify-content:center;z-index:40;padding:26px;
+}
+.modal.hidden{display:none}
+.modal-card{
+  width:min(860px,100%);max-height:92vh;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--line-2);border-radius:14px;
+  box-shadow:var(--shadow);overflow:hidden;animation:pop .16s ease-out;
+}
+.modal-card-wide{width:min(820px,100%)}
+.modal-card-narrow{width:min(640px,100%)}
+@keyframes pop{from{transform:translateY(8px) scale(.99);opacity:.6}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.modal-head h2{margin:0;font-size:15px;font-weight:600}
+.head-tools{display:flex;align-items:center;gap:8px}
+/* 工具条内的按钮、下拉与输入框统一高度，避免同一行控件参差不齐。
+   （按钮默认 padding 较小、下拉/输入框较大，不统一时会明显错位。） */
+.head-tools > button,.head-tools > select,.head-tools > input{
+  height:var(--ctl-h);padding-top:0;padding-bottom:0;
+}
+.head-tools > .icon-btn{width:var(--ctl-h);height:var(--ctl-h)}
+.head-l{display:flex;align-items:center;gap:9px;min-width:0}
+.head-l h2{word-break:break-all}
+/* 详情抽屉顶部的操作按钮组 */
+.detail-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.modal-body{padding:18px 20px;overflow:auto}
+.modal-foot{
+  display:flex;align-items:center;gap:10px;padding:13px 20px;
+  border-top:1px solid var(--line);background:var(--panel-2);
+}
+
+/* 卡片：把表单按语义分组，替代原来的分隔线小节 */
+.card{
+  border:1px solid var(--line);border-radius:11px;background:var(--panel-2);
+  padding:14px 16px;margin-bottom:12px;
+}
+.card:last-child{margin-bottom:0}
+.card-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.card-head b{font-size:13px;font-weight:600}
+.card-head .hint{color:var(--fg-mute);font-size:11.5px}
+
+/* 日志抽屉：贴右边滑出的面板 */
+.modal.drawer-modal{align-items:stretch;justify-content:flex-end;padding:0;background:var(--mask)}
+.modal-card.drawer{
+  width:min(760px,100%);max-height:100vh;height:100vh;border-radius:0;border-right:0;border-top:0;border-bottom:0;
+  animation:slidein .22s cubic-bezier(.22,1,.36,1);
+}
+/* 详情抽屉：更窄一些，操作按钮排在顶部 */
+.modal-card.drawer-narrow{width:min(440px,100%)}
+@keyframes slidein{from{transform:translateX(24px);opacity:.5}to{transform:none;opacity:1}}
+
+/* --------------------------------- 表单 --------------------------------- */
+/* 一行放 3 个配置项；field-wide 独占整行，field-span2 占两格 */
+.field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.field-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.field-wide{grid-column:1 / -1}
+.field-span2{grid-column:span 2}
+/* 凭据修正弹窗里的失败原因摘要 */
+.cred-err{margin:0 0 14px;padding:10px 12px;border-radius:8px;font-size:12.5px;line-height:1.6;
+  color:var(--danger);background:var(--danger-soft);word-break:break-all}
+#form-cred .hint{margin:12px 0 0}
+.field{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.field > span{color:var(--fg-mute)}
+.field em{color:var(--danger);font-style:normal}
+/* 字段下方的警示提示（如「连接地址已改，密码需重新输入」） */
+.field-hint{color:var(--up);font-size:11.5px;line-height:1.5}
+/* 只读状态展示：明确不是可编辑控件 */
+.state-chip{
+  display:flex;align-items:center;gap:7px;height:37px;padding:0 11px;
+  border:1px dashed var(--line-2);border-radius:8px;background:transparent;
+  color:var(--fg-dim);font-size:12.5px;
+}
+.state-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--dot-off);flex:0 0 auto}
+.state-chip .dot.on{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+/* 字段下方的补充说明（如名称可用字符限制） */
+.field-note{margin:11px 0 0;font-size:11.5px;line-height:1.7;color:var(--fg-mute)}
+.field-note code{font:11px var(--mono);background:var(--panel-3);border-radius:4px;padding:1px 5px;color:var(--fg-dim)}
+/* 文本类控件统一外观：输入框做成「内凹」质感，与按钮明显区分；
+   下拉框额外带箭头，进一步区分；checkbox/radio 保留原生渲染 */
+input:not([type="checkbox"]):not([type="radio"]),select{
+  appearance:none;background:var(--input-bg);border:1px solid var(--line);
+  color:var(--fg);padding:8px 11px;border-radius:8px;font-size:13px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.16);
+  transition:border-color .15s,box-shadow .15s,background .15s;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,select:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+}
+input::placeholder{color:var(--fg-mute)}
+/* 下拉框：右侧箭头 + 更大的右内边距，与普通输入框区分 */
+select{
+  cursor:pointer;padding-right:30px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6.5L8 10.5L12 6.5' stroke='%237d8794' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:12px;
+}
+select option{background:var(--panel);color:var(--fg)}
+.w-sm{width:110px}
+.w-xs{width:84px}
+
+.sub-block{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.sub-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.sub-head h3{margin:0;font-size:13px;font-weight:600}
+.hint{color:var(--fg-mute);font-size:11.5px}
+.chips-edit{display:flex;flex-wrap:wrap;gap:7px;min-height:22px;align-items:center}
+.chip-edit{
+  display:inline-flex;align-items:center;gap:7px;font-size:11.5px;padding:4px 6px 4px 10px;
+  border-radius:8px;border:1px solid var(--line-2);background:var(--panel-2);
+  font-family:var(--mono);word-break:break-all;
+}
+.chip-edit button{
+  appearance:none;border:0;background:var(--panel-3);color:var(--fg-mute);
+  width:17px;height:17px;border-radius:50%;cursor:pointer;line-height:1;font-size:11px;flex:0 0 auto;
+}
+.chip-edit button:hover{background:var(--danger);color:#fff}
+
+/* 路由 / 转发的新增行：网格对齐，控件宽度统一，不再随内容忽宽忽窄 */
+.add-row{display:grid;align-items:center;gap:8px;margin-top:10px}
+.add-row.route{grid-template-columns:minmax(0,1fr) auto auto}
+.add-row.forward{grid-template-columns:minmax(110px,auto) minmax(0,1.3fr) 116px minmax(0,1.3fr) 116px auto}
+.add-row input,.add-row select{min-width:0;width:100%}
+/* 按钮与输入框等高，整行看起来齐平 */
+.add-row input,.add-row select,.add-row .btn{height:37px}
+.add-row .btn{padding:0 14px;font-size:13px;justify-self:start}
+.check{display:inline-flex;align-items:center;gap:6px;color:var(--fg-dim);font-size:12.5px;white-space:nowrap}
+.check input{width:15px;height:15px;margin:0;padding:0;accent-color:var(--accent);cursor:pointer}
+
+/* --------------------------------- 日志 --------------------------------- */
+.logs{
+  margin:0;padding:14px;background:var(--code-bg);border:1px solid var(--line);border-radius:9px;
+  font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--fg-dim);
+  white-space:pre-wrap;word-break:break-word;flex:1;overflow:auto;
+}
+.modal-card.drawer .modal-body{display:flex;padding:16px}
+
+/* --------------------------------- Toast -------------------------------- */
+.toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:60}
+.toast{
+  border:1px solid var(--line-2);background:var(--panel);border-radius:9px;padding:10px 14px;
+  font-size:12.5px;box-shadow:var(--shadow);animation:pop .16s ease-out;max-width:340px;
+}
+.toast.ok{border-color:var(--accent-soft);background:var(--accent-soft);color:var(--fg)}
+.toast.err{border-color:var(--danger-soft);background:var(--danger-soft)}
+
+/* --------------------------- 登录 / 权限遮罩 ---------------------------- */
+.overlay{
+  position:fixed;inset:0;background:var(--mask);backdrop-filter:blur(7px);
+  display:flex;align-items:center;justify-content:center;z-index:80;padding:24px;
+}
+.login-card{
+  width:min(400px,100%);display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--line-2);border-radius:16px;
+  box-shadow:var(--shadow);padding:32px 30px 28px;animation:pop .16s ease-out;
+}
+.login-logo{width:54px;height:54px;border-radius:14px;box-shadow:var(--logo-shadow)}
+.login-card h1{margin:10px 0 0;font-size:20px;letter-spacing:.3px;font-weight:600}
+.login-card h1#elevate-title{font-size:17px}
+.login-sub{margin:2px 0 16px;color:var(--fg-mute);font-size:12.5px;text-align:center}
+.login-card form{width:100%;display:flex;flex-direction:column;gap:14px}
+.spinner{
+  width:28px;height:28px;margin-top:14px;border-radius:50%;
+  border:3px solid var(--line-2);border-top-color:var(--accent);animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.elevate-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;width:100%;margin-top:16px}
+.elevate-cmd{
+  display:block;width:100%;margin-top:14px;padding:11px 13px;border-radius:9px;
+  background:var(--panel-2);border:1px solid var(--line-2);color:var(--fg-dim);
+  font-size:12px;line-height:1.7;text-align:left;white-space:pre-wrap;word-break:break-word;
+}
+
+/* ------------------------------- 响应式 -------------------------------- */
+/* 断点：1120（分栏折叠）→ 1000（表单两列）→ 820（平板）→ 640（窄屏/手机）→ 540（概览折叠）→ 420（极窄） */
+
+@media (max-width:1120px){
+  .split{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:1000px){
+  .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .field-span2{grid-column:1 / -1}
+  .add-row.forward{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .add-row.forward .btn{grid-column:1 / -1}
+}
+@media (max-width:820px){
+  .view{padding:14px 14px 34px}
+  .bar{padding:10px 14px;flex-wrap:wrap}
+  .brand-text{display:none}
+  .readout{grid-template-columns:repeat(2,1fr)}
+  .field-grid{grid-template-columns:1fr}
+  .modal{padding:14px}
+  .modal-card.drawer{width:100%}
+}
+
+/* 窄屏（手机竖屏）：单列排布、控件换行、触摸目标放大 */
+@media (max-width:640px){
+  .bar{padding:9px 12px;gap:8px}
+  .bar-l{gap:8px}
+  .bar-r{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .view{padding:12px 12px 28px;gap:12px}
+  .foot{padding:9px 12px;flex-wrap:wrap;gap:6px 10px}
+  .foot .spacer{display:none}
+  .foot-l{width:100%}
+
+  /* 弹窗与抽屉占满屏幕，标题与工具条分行 */
+  .modal{padding:0}
+  .modal-card{border-radius:0;max-height:100vh;height:100vh}
+  .modal-card.drawer{width:100%}
+  .modal-head{padding:12px 14px;gap:8px;flex-wrap:wrap}
+  .modal-head h2{font-size:14px}
+  .head-l{min-width:0}
+  .head-tools{width:100%;flex-wrap:wrap;gap:6px}
+  .head-tools select,.head-tools input{flex:1 1 120px;min-width:0;width:auto}
+  .modal-body{padding:12px;overflow:auto}
+  .card{padding:12px}
+
+  /* 表单与「新增行」改单列 */
+  .field-grid,.field-grid.two{grid-template-columns:1fr}
+  .field-span2{grid-column:auto}
+  .add-row,.add-row.route,.add-row.forward{grid-template-columns:1fr}
+  .add-row.forward .btn{grid-column:auto}
+  .add-row .btn{width:100%;justify-self:stretch}
+
+  /* 表格：压缩留白，仍可横向滚动 */
+  .tbl{min-width:620px}
+  .tbl thead th,.tbl tbody td{padding:8px 10px}
+  .filters{width:100%;justify-content:space-between}
+  .filters button{flex:1}
+
+  /* 触摸目标不小于 36px（与工具条内的控件高度保持一致） */
+  :root{--ctl-h:36px}
+  .btn{min-height:var(--ctl-h)}
+  .icon-btn{width:var(--ctl-h);height:var(--ctl-h)}
+  .icon-btn.solid{width:var(--ctl-h);height:var(--ctl-h)}
+  .rowacts{gap:6px;flex-wrap:wrap}
+
+  /* 提示条与 Toast 铺满宽度 */
+  .notice{flex-wrap:wrap;gap:8px}
+  .notice .spacer{display:none}
+  .notice .btn{width:100%}
+  .toasts{left:12px;right:12px;bottom:12px}
+  .toast{max-width:none}
+
+  /* 概览与流量读数 */
+  .readout{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+  .readout .v{font-size:17px}
+  .chart-top .rate{font-size:19px}
+  .ov-side{padding:12px}
+  .spark{height:42px}
+
+  /* 日志区 */
+  .logs{font-size:11px;padding:10px}
+}
+
+/* 概览折叠：单列排布，四个指标横向一排，流量图上下堆叠 */
+@media (max-width:540px){
+  .overview{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto}
+  .ov-side:first-child{grid-column:1;grid-row:1;border-right:0;border-bottom:1px solid var(--line);padding:10px 12px}
+  .ov-side:nth-child(2)>.ov-title{grid-column:1;grid-row:2;padding:10px 12px 0}
+  .traffic-body .chart:first-child{grid-column:1;grid-row:3;padding:0 12px 8px}
+  .traffic-body .chart:last-child{
+    grid-column:1;grid-row:4;border-left:0;border-top:1px solid var(--line);padding:8px 12px 10px;
+  }
+  .ov-title{margin-bottom:8px}
+  /* 四个指标横排，标签在上数值在下 */
+  .readout{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 8px}
+  .readout .k{font-size:10px;letter-spacing:0}
+  .readout .v{font-size:16px;margin-top:1px}
+  /* 标签与速率同行，再省一行高度 */
+  .chart-top>div:first-child{display:flex;align-items:baseline;gap:8px}
+  .chart-top{gap:6px}
+  .chart-top .label{font-size:11px}
+  .chart-top .rate{font-size:17px;margin-top:0}
+  .chart-top .total{font-size:10.5px;padding-top:0}
+  .spark{height:28px;margin-top:4px}
+}
+
+/* 极窄屏：顶栏文字按钮改为纯图标 */
+@media (max-width:420px){
+  .bar-r .btn-label{display:none}
+  /* 刷新按钮没有配套图标，窄屏保留文字，避免缩成一个空按钮 */
+  .bar-r #btn-refresh .btn-label{display:inline}
+  .bar-r .btn{padding:7px 9px}
+  .brand-logo{width:24px;height:24px}
+  .modal-head{gap:6px}
+  /* 极窄屏：页脚仓库链接只留图标，避免把状态标签挤掉 */
+  .foot-link span{display:none}
+  .foot-link{padding:4px 8px}
+}

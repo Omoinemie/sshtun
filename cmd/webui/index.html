@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="app.title">sshtun · 隧道管理器</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<!-- 在首帧前应用主题，避免亮/暗切换闪一下；auto 时跟随系统/浏览器配色 -->
+<script>
+(function(){
+  try{
+    var pref = localStorage.getItem("sshtun_theme") || "auto";
+    var t = pref;
+    if (pref !== "light" && pref !== "dark") {
+      t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  }catch(e){}
+})();
+</script>
+<!-- 双语资源：需在 app.js 之前加载，界面文案统一由 I18N.t() 取用 -->
+<script src="i18n.js"></script>
+</head>
+<body>
+<div id="app" class="app">
+  <!-- ============================== 主区 ============================== -->
+  <main class="main">
+    <header class="bar">
+      <div class="bar-l">
+        <img src="logo.svg" alt="sshtun" class="brand-logo">
+        <div class="brand-text">
+          <b>sshtun</b>
+          <span>Tunnel Console</span>
+        </div>
+      </div>
+      <div class="bar-r">
+        <button class="btn" id="btn-logs" title="查看运行日志" data-i18n-title="nav.logs.title" aria-label="查看运行日志" data-i18n-aria-label="nav.logs.title">
+          <svg viewBox="0 0 16 16" fill="none" width="15" height="15"><path d="M2.2 3.8h11.6M2.2 8h11.6M2.2 12.2h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="btn-label" data-i18n="logs.title">运行日志</span>
+        </button>
+        <button class="btn" id="btn-refresh" title="刷新" data-i18n-title="common.refresh" aria-label="刷新" data-i18n-aria-label="common.refresh"><span class="btn-label" data-i18n="common.refresh">刷新</span></button>
+        <button class="icon-btn solid" id="btn-theme" data-mode="auto" title="主题" data-i18n-title="nav.theme" aria-label="主题" data-i18n-aria-label="nav.theme">
+          <svg class="ic-auto" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.6" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.4a5.6 5.6 0 0 1 0 11.2Z" fill="currentColor"/></svg>
+          <svg class="ic-light" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.1v1.6M8 13.3v1.6M1.1 8h1.6M13.3 8h1.6M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg class="ic-dark" viewBox="0 0 16 16" fill="none"><path d="M13.4 9.7A5.8 5.8 0 0 1 6.3 2.6a5.8 5.8 0 1 0 7.1 7.1Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn solid" id="btn-settings" title="设置" data-i18n-title="settings.title" aria-label="设置" data-i18n-aria-label="settings.title">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M8 2.1l.85 1.42 1.64-.3.5 1.56 1.55.6-.46 1.63L13.2 8l-1.12 1.09.46 1.63-1.55.6-.5 1.56-1.64-.3L8 13.9l-.85-1.42-1.64.3-.5-1.56-1.55-.6.46-1.63L2.8 8l1.12-1.09-.46-1.63 1.55-.6.5-1.56 1.64.3L8 2.1Z" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.9" stroke="currentColor" stroke-width="1.05"/></svg>
+        </button>
+        <span class="pill pill-muted hidden" id="pill-user"></span>
+        <button class="icon-btn hidden" id="btn-logout" title="退出登录" data-i18n-title="nav.logout" aria-label="退出登录" data-i18n-aria-label="nav.logout">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M6.2 2.6H3.4v10.8h2.8M9.6 5.2 12.4 8l-2.8 2.8M12.4 8H6.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="view">
+      <!-- 管理员权限提示 -->
+      <section id="banner-priv" class="notice hidden">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 1.9 14.5 13H1.5L8 1.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.6v3M8 11.6v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="notice-text"><b data-i18n="elevate.title">需要管理员权限</b> · <span data-i18n="elevate.notice">启动/重启隧道会创建 TUN 网卡并修改系统路由，程序不会自动提权。</span></span>
+        <span class="spacer"></span>
+        <button id="btn-elevate" class="btn btn-sm" data-i18n="elevate.viewHelp">查看处理方法</button>
+      </section>
+
+      <!-- 概览：隧道信息 + 全局流量合并为一个面板（节省纵向空间） -->
+      <section class="overview">
+        <div class="ov-side">
+          <div class="ov-title"><b data-i18n="overview.title">隧道概览</b><span class="hint" data-i18n="overview.hint">当前实例</span></div>
+          <div class="readout" id="stats"></div>
+        </div>
+        <div class="ov-side">
+          <div class="ov-title">
+            <b data-i18n="overview.traffic">全局流量</b>
+            <span class="hint" id="traffic-hint" data-i18n="overview.trafficIdle">当前无运行中的隧道</span>
+            <span class="live"><span class="dot on"></span><span data-i18n="overview.live">实时</span></span>
+          </div>
+          <div class="traffic-body" id="traffic-body"></div>
+        </div>
+      </section>
+
+      <!-- 隧道表（详情以右侧抽屉展开） -->
+      <div class="split" id="split">
+        <div class="panel">
+          <div class="panel-head">
+            <b data-i18n="tunnels.title">隧道</b>
+            <div class="filters" id="tfilters">
+              <button class="is-on" data-f="all" aria-pressed="true" data-i18n="tunnels.filter.all">全部</button>
+              <button data-f="running" aria-pressed="false" data-i18n="common.running">运行中</button>
+              <button data-f="stopped" aria-pressed="false" data-i18n="common.stopped">已停止</button>
+              <button data-f="off" aria-pressed="false" data-i18n="common.disabledMarked">已停用</button>
+            </div>
+            <div class="spacer"></div>
+            <div class="head-tools">
+              <button id="btn-start" class="btn btn-sm" data-i18n="act.startAll">启动全部</button>
+              <button id="btn-stop" class="btn btn-sm" data-i18n="act.stopAll">停止全部</button>
+              <button id="btn-restart" class="btn btn-sm" data-i18n="act.restartAll">重启全部</button>
+              <button id="btn-new" class="btn btn-sm btn-primary" data-i18n="tunnels.new">＋ 新建隧道</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th scope="col" style="width:130px" data-i18n="tunnels.title">隧道</th>
+                  <th scope="col" style="width:168px" data-i18n="tunnels.th.endpoint">SSH 端点</th>
+                  <th scope="col" style="width:180px" data-i18n="common.tun">TUN 网卡</th>
+                  <th scope="col" class="num" style="width:104px" data-i18n="common.download">下载</th>
+                  <th scope="col" class="num" style="width:104px" data-i18n="common.upload">上传</th>
+                  <th scope="col" class="num" style="width:148px" data-i18n="tunnels.th.actions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="tunnels"></tbody>
+            </table>
+          </div>
+          <div id="empty" class="empty hidden">
+            <img src="logo.svg" alt="">
+            <h2 data-i18n="tunnels.empty.title">还没有任何隧道</h2>
+            <p data-i18n="tunnels.empty.desc">创建第一条隧道，填写 SSH 服务器与网卡信息即可开始。</p>
+            <button class="btn btn-primary" onclick="document.getElementById('btn-new').click()" data-i18n="tunnels.empty.cta">创建隧道</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== 页脚 ============================== -->
+    <footer class="foot">
+      <span class="foot-l">sshtun <span class="pill pill-muted" id="pill-ver">v-</span></span>
+      <a class="foot-link" href="https://github.com/Omoinemie/sshtun" target="_blank" rel="noopener noreferrer" title="https://github.com/Omoinemie/sshtun"><svg viewBox="0 0 16 16" fill="currentColor" width="13" height="13" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>github.com/Omoinemie/sshtun</span></a>
+      <span class="spacer"></span>
+      <span class="pill" id="pill-priv" title="是否具备创建 TUN 与修改路由的权限" data-i18n-title="overview.privTitle" data-i18n="overview.privChecking">权限检测中…</span>
+      <span class="pill" id="pill-run" title="实例运行状态" data-i18n-title="overview.statusTitle" data-i18n="overview.statusChecking">状态检测中…</span>
+    </footer>
+  </main>
+</div>
+
+<!-- ============================ 隧道编辑弹窗 ============================ -->
+<div id="modal-edit" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+  <div class="modal-card modal-card-wide">
+    <header class="modal-head">
+      <div class="head-l">
+        <h2 id="edit-title" data-i18n="tunnel.new">新建隧道</h2>
+        <span class="hint" id="edit-sub" data-i18n="tunnel.sub.new">填写 SSH 服务器与分流网段即可开始</span>
+      </div>
+      <button class="icon-btn" data-close title="关闭" data-i18n-title="common.close" aria-label="关闭" data-i18n-aria-label="common.close">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="modal-body">
+      <form id="form-tunnel" autocomplete="off">
+        <section class="card" id="card-basic">
+          <div class="card-head"><b data-i18n="tunnel.basic">基本信息</b><span class="hint" data-i18n="tunnel.basic.hint">隧道名用于命令行与配置</span></div>
+          <div class="field-grid">
+            <label class="field field-wide"><span><span data-i18n="tunnel.name">隧道名</span> <em>*</em></span><input name="name" placeholder="office" maxlength="32" required></label>
+          </div>
+          <p class="field-note">
+            <span data-i18n="tunnel.nameNote1">隧道名不可包含空格与 </span><code>&lt; &gt; : " / \ | ? *</code><span data-i18n="tunnel.nameNote2"> 等字符，也不能以 </span><code>.</code><span data-i18n="tunnel.nameNote3"> 结尾；最长 32 个字符，且不能取保留名 </span><code>all</code><span data-i18n="tunnel.nameNote4">。</span>
+          </p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="tunnel.ssh">SSH 连接</b><span class="hint" data-i18n="tunnel.ssh.hint">凭据加密保存在本地数据库</span></div>
+          <div class="field-grid">
+            <label class="field"><span><span data-i18n="tunnel.sshHost">SSH 服务器</span> <em>*</em></span><input name="ssh_host" placeholder="1.2.3.4 或 example.com" data-i18n-placeholder="tunnel.sshHost.placeholder" required></label>
+            <label class="field"><span data-i18n="tunnel.sshPort">SSH 端口</span><input name="ssh_port" type="number" min="1" max="65535" placeholder="22"></label>
+            <label class="field"><span data-i18n="tunnel.sshUser">SSH 用户</span><input name="ssh_user" placeholder="root"></label>
+            <label class="field"><span data-i18n="tunnel.authMethod">认证方式</span>
+              <select name="ssh_auth"><option value="key" data-i18n="tunnel.auth.key">私钥 (key)</option><option value="password" data-i18n="tunnel.auth.password">密码 (password)</option></select>
+            </label>
+            <label class="field auth-key"><span data-i18n="common.keyFile">私钥文件</span><input name="ssh_key_file" placeholder="~/.ssh/id_ed25519"></label>
+            <label class="field auth-pwd hidden"><span data-i18n="tunnel.loginPassword">登录密码</span><input name="password" type="password" placeholder="留空表示不修改" data-i18n-placeholder="settings.web.password.hint"><span class="field-hint hidden" id="pwd-invalidated" data-i18n="tunnel.pwd.invalidated">连接地址已修改，保存后需重新输入密码</span></label>
+            <label class="field"><span data-i18n="tunnel.hostKey">主机指纹校验</span>
+              <select name="ssh_host_key" title="accept-new = 首次自动信任；strict = 严格校验；none = 不校验（不安全）" data-i18n-title="tunnel.hostKey.title">
+                <option value="accept-new">accept-new</option>
+                <option value="strict">strict</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="common.tun">TUN 网卡</b><span class="hint" data-i18n="tunnel.tun.hint">虚拟网卡参数，Windows 下需 wintun 驱动</span></div>
+          <div class="field-grid">
+            <label class="field"><span data-i18n="tunnel.tunName">网卡名</span><input name="tun_name" placeholder="sshtun1"></label>
+            <label class="field"><span data-i18n="tunnel.tunAddress">网卡地址</span><input name="tun_address" placeholder="198.18.0.1/30"></label>
+            <label class="field"><span>MTU</span><input name="tun_mtu" type="number" min="576" max="65535" placeholder="1500"></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="common.routes">路由</b><span class="hint" data-i18n="tunnel.routes.hint">决定哪些网段走隧道，bypass 为强制直连</span></div>
+          <div id="routes-list" class="chips-edit"></div>
+          <div class="add-row route">
+            <input id="route-cidr" placeholder="10.0.0.0/8 或 1.2.3.4" data-i18n-placeholder="tunnel.routes.placeholder">
+            <label class="check"><input type="checkbox" id="route-bypass"> bypass</label>
+            <button type="button" class="btn btn-sm" id="btn-add-route" data-i18n="tunnel.addRoute">添加路由</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="common.forwards">端口转发</b><span class="hint" data-i18n="tunnel.forwards.hint">local = -L，remote = -R</span></div>
+          <div id="forwards-list" class="chips-edit"></div>
+          <div class="add-row forward">
+            <select id="fw-dir"><option value="local">local (-L)</option><option value="remote">remote (-R)</option></select>
+            <input id="fw-bind-host" placeholder="监听地址（默认 127.0.0.1）" data-i18n-placeholder="tunnel.fw.bindHost">
+            <input id="fw-bind-port" type="number" min="1" max="65535" placeholder="监听端口" data-i18n-placeholder="tunnel.fw.bindPort">
+            <input id="fw-host" placeholder="目标主机" data-i18n-placeholder="tunnel.fw.host">
+            <input id="fw-port" type="number" min="1" max="65535" placeholder="目标端口" data-i18n-placeholder="tunnel.fw.port">
+            <button type="button" class="btn btn-sm" id="btn-add-fw" data-i18n="tunnel.addForward">添加转发</button>
+          </div>
+        </section>
+      </form>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn btn-danger-ghost hidden" id="btn-delete" data-i18n="tunnel.delete">删除隧道</button>
+      <span class="spacer"></span>
+      <button class="btn" data-close data-i18n="common.cancel">取消</button>
+      <button class="btn btn-primary" id="btn-save" data-i18n="common.save">保存</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================== 设置弹窗 ============================== -->
+<div id="modal-settings" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal-card modal-card-narrow">
+    <header class="modal-head">
+      <div class="head-l">
+        <h2 id="settings-title" data-i18n="settings.title">设置</h2>
+        <span class="hint" id="settings-path">—</span>
+      </div>
+      <button class="icon-btn" data-close title="关闭" data-i18n-title="common.close" aria-label="关闭" data-i18n-aria-label="common.close">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="modal-body">
+      <form id="form-settings" autocomplete="off">
+        <section class="card">
+          <div class="card-head"><b data-i18n="settings.appearance">界面外观</b><span class="hint" data-i18n="settings.appearance.hint">语言与主题，未配置时跟随系统</span></div>
+          <div class="field-grid two">
+            <label class="field"><span data-i18n="settings.language">界面语言</span>
+              <select name="webLanguage">
+                <option value="auto" data-i18n="settings.language.auto">自动（跟随系统）</option>
+                <option value="zh" data-i18n="settings.language.zh">简体中文</option>
+                <option value="en" data-i18n="settings.language.en">English</option>
+              </select>
+            </label>
+            <label class="field"><span data-i18n="settings.theme">界面主题</span>
+              <select name="webTheme">
+                <option value="auto" data-i18n="settings.theme.auto">自动（跟随系统）</option>
+                <option value="light" data-i18n="settings.theme.light">浅色</option>
+                <option value="dark" data-i18n="settings.theme.dark">深色</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="common.logs">日志</b><span class="hint" data-i18n="settings.logs.hint">输出位置与级别</span></div>
+          <div class="field-grid">
+            <label class="field"><span data-i18n="settings.logLevel">日志级别</span>
+              <select name="logLevel">
+                <option value="debug">debug</option><option value="info">info</option>
+                <option value="warn">warn</option><option value="error">error</option>
+              </select>
+            </label>
+            <label class="field"><span data-i18n="settings.logDir">日志目录</span><input name="logDir" placeholder="log（留空表示只输出到控制台）" data-i18n-placeholder="settings.logDir.placeholder"></label>
+            <label class="field"><span data-i18n="settings.logConsole">控制台输出</span>
+              <select name="logConsole">
+                <option value="auto" data-i18n="settings.logConsole.auto">auto（前台输出）</option>
+                <option value="true" data-i18n="settings.logConsole.true">true（始终输出）</option>
+                <option value="false" data-i18n="settings.logConsole.false">false（仅写文件）</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="settings.sshCommon">SSH 通用参数</b><span class="hint" data-i18n="settings.sshCommon.hint">对所有隧道生效</span></div>
+          <div class="field-grid two">
+            <label class="field"><span data-i18n="settings.connectTimeout">连接超时（秒）</span><input name="connectTimeout" type="number" min="1" max="600"></label>
+            <label class="field"><span data-i18n="settings.keepalive">保活间隔（秒）</span><input name="keepalive" type="number" min="0" max="3600"></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="settings.web">Web 服务</b><span class="hint" data-i18n="settings.web.hint">监听地址/端口与密码需重启 sshtun 生效</span></div>
+          <div class="field-grid two">
+            <label class="field"><span data-i18n="settings.web.hostname">监听地址</span><input name="webHostname" placeholder="127.0.0.1"></label>
+            <label class="field"><span data-i18n="settings.web.port">端口</span><input name="webPort" type="number" min="0" max="65535"></label>
+            <label class="field"><span data-i18n="settings.web.username">用户名</span><input name="webUsername" placeholder="admin"></label>
+            <label class="field"><span data-i18n="settings.web.password">访问密码</span><input name="webPassword" type="password" data-i18n-placeholder="settings.web.password.hint" placeholder="留空表示不修改"></label>
+            <label class="field field-wide"><span data-i18n="settings.web.cors">CORS 允许来源</span><input name="webCORS" data-i18n-placeholder="settings.web.cors.hint" placeholder="逗号分隔，* 表示允许任意源"></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><b data-i18n="settings.other">其他</b><span class="hint" data-i18n="settings.other.hint">数据库与 tun2socks 位置</span></div>
+          <div class="field-grid two">
+            <label class="field"><span data-i18n="settings.db">数据库路径</span><input name="db" placeholder="config/sshtun.db"></label>
+            <label class="field"><span data-i18n="settings.tun2socks">tun2socks 路径</span><input name="tun2socks" placeholder="留空表示自动查找" data-i18n-placeholder="settings.tun2socks.placeholder"></label>
+          </div>
+        </section>
+      </form>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn" data-close data-i18n="common.cancel">取消</button>
+      <button class="btn btn-primary" id="btn-settings-save" data-i18n="settings.save">保存设置</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================ SSH 凭据修正弹窗 ============================ -->
+<div id="modal-cred" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="cred-title">
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2 id="cred-title" data-i18n="cred.title">SSH 认证失败</h2>
+      <button class="icon-btn" data-close title="关闭" data-i18n-title="common.close" aria-label="关闭" data-i18n-aria-label="common.close">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </header>
+    <div class="modal-body">
+      <p id="cred-err" class="cred-err"></p>
+      <form id="form-cred" autocomplete="off">
+        <div class="field-grid two">
+          <label class="field"><span><span data-i18n="cred.user">SSH 用户名</span> <em>*</em></span><input name="cred_user" placeholder="root" required></label>
+          <label class="field cred-pwd"><span><span data-i18n="cred.password">SSH 密码</span> <em>*</em></span><input name="cred_pass" type="password" placeholder="重新输入登录密码" data-i18n-placeholder="cred.password.placeholder" autocomplete="new-password"></label>
+          <label class="field cred-key hidden"><span><span data-i18n="common.keyFile">私钥文件</span> <em>*</em></span><input name="cred_key" placeholder="~/.ssh/id_ed25519"></label>
+          <label class="field cred-key hidden"><span data-i18n="cred.keyPass">私钥口令（可留空）</span><input name="cred_keypass" type="password" placeholder="私钥口令" data-i18n-placeholder="cred.keyPass.placeholder" autocomplete="new-password"></label>
+        </div>
+        <p class="hint" data-i18n="cred.hint">凭据会自动加密保存到数据库，随后立即重试启动该隧道。</p>
+      </form>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn" data-close data-i18n="common.cancel">取消</button>
+      <button class="btn btn-primary" id="btn-cred-save" data-i18n="cred.save">保存并重试</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================ 隧道详情抽屉 ============================ -->
+<div id="drawer-detail" class="modal drawer-modal hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div class="modal-card drawer drawer-narrow">
+    <header class="modal-head">
+      <div class="head-l">
+        <h2 id="detail-title" data-i18n="tunnel.detail">隧道详情</h2>
+        <span class="pill pill-muted" id="detail-status">—</span>
+      </div>
+      <div class="head-tools">
+        <span class="detail-actions" id="detail-actions"></span>
+        <button class="icon-btn" data-close title="关闭" data-i18n-title="common.close" aria-label="关闭" data-i18n-aria-label="common.close">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="modal-body" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- ============================== 日志抽屉 ============================== -->
+<div id="drawer-logs" class="modal drawer-modal hidden" role="dialog" aria-modal="true" aria-labelledby="logs-title">
+  <div class="modal-card drawer">
+    <header class="modal-head">
+      <h2 id="logs-title" data-i18n="logs.title">运行日志</h2>
+      <div class="head-tools">
+        <select id="log-tunnel" class="w-sm" title="按隧道筛选日志" data-i18n-title="logs.filter.title" aria-label="按隧道筛选日志" data-i18n-aria-label="logs.filter.title"></select>
+        <input id="log-lines" class="w-xs" type="number" min="50" max="5000" value="300" title="显示行数" data-i18n-title="logs.lines.title" aria-label="显示行数" data-i18n-aria-label="logs.lines.title">
+        <button class="btn btn-sm" id="btn-log-reload" title="立即重新读取日志" data-i18n-title="logs.reload.title" data-i18n="common.refresh">刷新</button>
+        <button class="btn btn-sm" id="btn-log-auto" aria-pressed="false" title="自动刷新日志并跳到最新一条" data-i18n-title="logs.auto.title" data-i18n="logs.auto">自动刷新</button>
+        <select id="log-interval" class="w-xs" title="自动刷新间隔" data-i18n-title="logs.interval.title" aria-label="自动刷新间隔" data-i18n-aria-label="logs.interval.title">
+          <option value="2000" data-i18n="logs.interval.2">2 秒</option>
+          <option value="5000" selected data-i18n="logs.interval.5">5 秒</option>
+          <option value="10000" data-i18n="logs.interval.10">10 秒</option>
+          <option value="30000" data-i18n="logs.interval.30">30 秒</option>
+          <option value="60000" data-i18n="logs.interval.60">1 分钟</option>
+        </select>
+        <button class="icon-btn" data-close title="关闭" data-i18n-title="common.close" aria-label="关闭" data-i18n-aria-label="common.close">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="modal-body">
+      <pre id="log-content" class="logs" data-i18n="logs.loading">加载中…</pre>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<!-- ============================ 登录视图 ============================ -->
+<div id="login" class="overlay hidden">
+  <div class="login-card">
+    <img src="logo.svg" alt="sshtun" class="login-logo">
+    <h1>sshtun</h1>
+    <p class="login-sub" data-i18n="login.sub">请输入访问凭据以管理隧道</p>
+    <form id="form-login" autocomplete="off">
+      <label class="field"><span data-i18n="settings.web.username">用户名</span>
+        <input name="username" placeholder="admin" autocomplete="username" autofocus></label>
+      <label class="field"><span data-i18n="common.password">密码</span>
+        <input name="password" type="password" placeholder="密码" data-i18n-placeholder="common.password" autocomplete="current-password"></label>
+      <button class="btn btn-primary btn-block" type="submit" data-i18n="login.submit">登录</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============================ 权限面板 ============================ -->
+<div id="elevate-mask" class="overlay hidden">
+  <div class="login-card">
+    <h1 id="elevate-title" data-i18n="elevate.title">需要管理员权限</h1>
+    <p id="elevate-sub" class="login-sub"></p>
+    <div id="elevate-spinner" class="spinner hidden"></div>
+    <code id="elevate-cmd" class="elevate-cmd hidden"></code>
+    <div class="elevate-actions">
+      <button id="btn-elevate-go" class="btn btn-primary hidden" data-i18n="elevate.go">以管理员身份重启</button>
+      <button id="btn-elevate-retry" class="btn btn-primary hidden" data-i18n="elevate.retry">重试</button>
+      <button id="btn-elevate-close" class="btn" data-i18n="common.close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
