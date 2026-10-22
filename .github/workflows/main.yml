@@ -1,0 +1,157 @@
+name: Release
+
+# 手动触发的发版流程：在 Actions 页面点 "Run workflow"，填版本号即可一键打包并发布。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号，如 v0.4.11；留空或填 auto 则自动递增补丁号（vX.Y.Z -> vX.Y.Z+1）"
+        required: false
+        default: ""
+        type: string
+      notes:
+        description: "发布说明（留空则用默认文案）"
+        required: false
+        default: ""
+        type: string
+      draft:
+        description: "先创建为草稿，稍后手动点发布"
+        required: false
+        default: false
+        type: boolean
+      push_version:
+        description: "自动递增时，把新的 VERSION 文件回推到仓库"
+        required: false
+        default: true
+        type: boolean
+
+# 发布 Release 需要写仓库权限
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 打包并发布
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 需要完整历史，便于取 commit 号
+
+      - name: 安装 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: 代码检查
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: 打包
+        id: pack
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          v="$(printf '%s' "$VERSION_INPUT" | tr -d '[:space:]')"
+          auto=false
+          if [ -z "$v" ] || [ "$v" = "auto" ]; then
+            auto=true
+            echo ">> 未指定版本号，自动递增补丁版本号"
+            # 不传 VERSION 覆盖，交给 Makefile 的 bump-version 递增并写回 VERSION 文件
+            make dist
+          else
+            case "$v" in v*) ;; *) v="v$v" ;; esac
+            echo ">> 使用指定版本号：$v"
+            # 命令行传 VERSION 时 Makefile 会跳过自动递增
+            make dist VERSION="$v"
+          fi
+          # 统一版本号写法：去空白、补 v 前缀
+          cur="$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' VERSION)"
+          case "$cur" in v*) ;; *) cur="v$cur" ;; esac
+          tag="$cur"
+          if [ "$auto" = false ]; then
+            # 指定版本号时 Makefile 不会改 VERSION 文件，这里以实际打包用的版本为准
+            tag="$v"
+          fi
+          # 让仓库里的 VERSION 与本次发布保持一致
+          if [ "$cur" != "$tag" ]; then
+            printf '%s\n' "$tag" > VERSION
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "auto=$auto" >> "$GITHUB_OUTPUT"
+          echo ">> 产物列表："
+          ls -l dist
+
+      - name: 回写版本号
+        if: inputs.push_version
+        env:
+          TAG: ${{ steps.pack.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          if git diff --cached --quiet; then
+            echo ">> VERSION 无变化，跳过回写"
+            exit 0
+          fi
+          git commit -m "chore: bump version to $TAG"
+          # 分支受保护时可能推不上去，不影响发版
+          git push origin "HEAD:${GITHUB_REF_NAME}" || echo ">> VERSION 回推失败（可能受分支保护限制），已忽略"
+
+      - name: 创建 Release
+        env:
+          TAG: ${{ steps.pack.outputs.tag }}
+          NOTES: ${{ inputs.notes }}
+          DRAFT: ${{ inputs.draft }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NOTES" ]; then
+            notes=$(cat <<EOF
+          ## sshtun $TAG
+
+          跨平台 SSH 隧道管理器：TUN 透明代理、端口转发、SOCKS5，附带 Web 图形界面。
+
+          ### 下载
+
+          | 平台 | 架构 | 安装包 |
+          | --- | --- | --- |
+          | Linux | amd64 | \`sshtun_${TAG}_linux-amd64.tar.gz\` |
+          | Linux | arm64 | \`sshtun_${TAG}_linux-arm64.tar.gz\` |
+          | Windows | amd64 | \`sshtun_${TAG}_windows-amd64.zip\`（含 \`sshtun-gui.exe\` 图形界面） |
+
+          > 首次使用请先运行包内的 \`dl-tun2socks.sh\`（Linux）/ \`dl-tun2socks.bat\`（Windows）下载 tun2socks 依赖。
+          EOF
+          )
+          else
+            notes="$NOTES"
+          fi
+          draft=false
+          if [ "$DRAFT" = "true" ]; then draft=true; fi
+          assets=$(ls dist/*.tar.gz dist/*.zip)
+          echo ">> 待发布资产："
+          echo "$assets"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo ">> Release $TAG 已存在，改为覆盖上传同名资产"
+            gh release upload "$TAG" $assets --clobber
+            if [ "$draft" = true ]; then gh release edit "$TAG" --draft=true; fi
+          else
+            args=(--title "sshtun $TAG" --notes "$notes")
+            if [ "$draft" = true ]; then args+=(--draft); fi
+            gh release create "$TAG" $assets "${args[@]}"
+          fi
+
+      - name: 汇总
+        env:
+          TAG: ${{ steps.pack.outputs.tag }}
+        run: |
+          echo ">> 已发布：https://github.com/${{ github.repository }}/releases/tag/$TAG"
